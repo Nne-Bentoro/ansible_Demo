@@ -1,17 +1,40 @@
-pipeline{
-  agent any  
-  stages{  
-      stage("Run ansible playbook"){
-        steps{
-        ansiblePlaybook credentialsId: 'ssh-key', inventory: 'hosts', playbook: 'nginx_install.yaml'
+pipeline {
+    agent any
+
+    stages {
+        stage('Git checkout') {
+            steps {
+                git 'https://github.com/Nne-Bentoro/sonarqube-nexusRepo.git'
+            }
         }
-      }
-    stage('print nginx is Installed') {
-      steps{
-         sh"echo nginx is installed on all servers"
         
-      }
-      
-    }
-  }
-}
+        stage('Build with maven') {
+            steps {
+                sh 'cd SampleWebApp && mvn clean install'
+            }
+        }
+        
+             stage('Test') {
+            steps {
+                sh 'cd SampleWebApp && mvn test'
+            }
+        
+            }
+        stage('Code Qualty Scan') {
+
+           steps {
+                  withSonarQubeEnv('sonar-server') {
+             sh "mvn -f SampleWebApp/pom.xml sonar:sonar"      
+               }
+            }
+       }
+        stage('Quality Gate') {
+          steps {
+                 waitForQualityGate abortPipeline: true
+              }
+        }
+        
+            
+        }
+}  
+ 
